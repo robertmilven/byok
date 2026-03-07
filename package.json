@@ -1,0 +1,68 @@
+{
+    "name": "byok-ai-studio",
+    "version": "0.1.0",
+    "description": "BYOK AI Studio - Professional AI image and video generation with your own API keys",
+    "main": "./out/main/index.js",
+    "author": "BYOK AI Studio",
+    "private": true,
+    "scripts": {
+        "dev": "electron-vite dev",
+        "build": "electron-vite build",
+        "preview": "electron-vite preview",
+        "package": "npm run build && electron-builder",
+        "lint": "eslint .",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "better-sqlite3": "^9.4.3",
+        "clsx": "^2.1.1",
+        "lucide-react": "^0.475.0",
+        "nanoid": "^5.0.7",
+        "node-sqlite3-wasm": "^0.8.54",
+        "openai": "^4.77.3",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "react-router-dom": "^7.2.0",
+        "recharts": "^2.12.7",
+        "tailwind-merge": "^2.5.5",
+        "winston": "^3.13.0",
+        "winston-daily-rotate-file": "^5.0.0",
+        "zustand": "^5.0.2"
+    },
+    "devDependencies": {
+        "@electron-toolkit/eslint-config-prettier": "^2.0.0",
+        "@electron-toolkit/eslint-config-ts": "^2.0.0",
+        "@electron-toolkit/preload": "^3.0.1",
+        "@electron-toolkit/tsconfig": "^1.0.1",
+        "@electron-toolkit/utils": "^3.0.0",
+        "@electron/rebuild": "^4.0.3",
+        "@tailwindcss/vite": "^4.0.6",
+        "@types/better-sqlite3": "^7.6.12",
+        "@types/node": "^20.17.16",
+        "@types/react": "^19.0.3",
+        "@types/react-dom": "^19.0.2",
+        "@vitejs/plugin-react": "^4.3.4",
+        "electron": "^33.4.0",
+        "electron-builder": "^25.1.8",
+        "electron-vite": "^3.0.0",
+        "eslint": "^9.14.0",
+        "tailwindcss": "^4.0.6",
+        "typescript": "^5.7.2",
+        "vite": "^6.0.7"
+    },
+    "build": {
+        "appId": "com.byok.aistudio",
+        "productName": "BYOK AI Studio",
+        "directories": {
+            "buildResources": "resources"
+        },
+        "win": {
+            "target": "nsis",
+            "icon": "resources/icon.ico"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true
+        }
+    }
+}
