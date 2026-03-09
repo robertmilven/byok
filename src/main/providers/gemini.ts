@@ -83,6 +83,15 @@ export class GeminiAdapter implements ProviderAdapter {
                 aspectRatios: ['1:1', '16:9', '9:16', '3:4', '4:3'],
                 pricing: [{ costPerUnit: 0.015, unit: 'image' }],
                 parameters: []
+            },
+            {
+                id: 'nano-banana-2',
+                name: 'Nano Banana 2',
+                capabilities: ['text-to-image', 'image-to-image'],
+                maxResolution: { w: 1024, h: 1024 },
+                aspectRatios: ['1:1'],
+                pricing: [{ costPerUnit: 0.02, unit: 'image' }],
+                parameters: []
             }
         ];
     }

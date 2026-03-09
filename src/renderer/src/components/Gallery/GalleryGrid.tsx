@@ -8,13 +8,14 @@ interface Props {
     assets: Asset[]
     onDelete?: (id: string) => void
     onFavorite?: (id: string, favorite: boolean) => void
+    onCreateVideo?: (asset: AssetWithData) => void
 }
 
-interface AssetWithData extends Asset {
+export interface AssetWithData extends Asset {
     dataUrl?: string
 }
 
-export function GalleryGrid({ assets, onDelete, onFavorite }: Props): JSX.Element {
+export function GalleryGrid({ assets, onDelete, onFavorite, onCreateVideo }: Props) {
     const [withData, setWithData] = useState<AssetWithData[]>([])
     const [selected, setSelected] = useState<AssetWithData | null>(null)
     const loadedRef = useRef<Set<string>>(new Set())
@@ -30,7 +31,7 @@ export function GalleryGrid({ assets, onDelete, onFavorite }: Props): JSX.Elemen
                         IPC.ASSETS_READ_FILE,
                         { id: asset.id }
                     )
-                    if (result.data) {
+                    if (result && result.data) {
                         loadedRef.current.add(asset.id)
                         updates.push({
                             ...asset,
@@ -108,6 +109,7 @@ export function GalleryGrid({ assets, onDelete, onFavorite }: Props): JSX.Elemen
                         onClick={() => setSelected(asset)}
                         onDelete={onDelete}
                         onFavorite={onFavorite}
+                        onCreateVideo={onCreateVideo ? () => onCreateVideo(asset) : undefined}
                         onContextMenu={async () => {
                             const action = await window.api?.invoke<string | null>(IPC.ASSETS_CONTEXT_MENU, { id: asset.id })
                             if (action === 'delete' && onDelete) onDelete(asset.id)
@@ -124,6 +126,7 @@ export function GalleryGrid({ assets, onDelete, onFavorite }: Props): JSX.Elemen
                     onClose={() => setSelected(null)}
                     onDelete={onDelete ? (id) => { onDelete(id); setSelected(null) } : undefined}
                     onFavorite={onFavorite}
+                    onCreateVideo={onCreateVideo ? () => { onCreateVideo(selected); setSelected(null) } : undefined}
                 />
             )}
         </>
@@ -135,14 +138,16 @@ function GalleryItem({
     onClick,
     onDelete,
     onFavorite,
+    onCreateVideo,
     onContextMenu
 }: {
     asset: AssetWithData,
     onClick: () => void,
     onDelete?: (id: string) => void,
     onFavorite?: (id: string, favorite: boolean) => void,
+    onCreateVideo?: () => void,
     onContextMenu?: () => void
-}): JSX.Element {
+}) {
     const [hovered, setHovered] = useState(false)
 
     return (
@@ -168,12 +173,22 @@ function GalleryItem({
             }}
         >
             {asset.dataUrl ? (
-                <img
-                    src={asset.dataUrl}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    draggable={false}
-                />
+                asset.type === 'video' || asset.dataUrl.startsWith('data:video') ? (
+                    <video
+                        src={asset.dataUrl}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        muted
+                        loop
+                        autoPlay
+                    />
+                ) : (
+                    <img
+                        src={asset.dataUrl}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        draggable={false}
+                    />
+                )
             ) : (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: 20, height: 20, border: '2px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -194,6 +209,20 @@ function GalleryItem({
                     }}
                 >
                     <div style={{ pointerEvents: 'auto', display: 'flex', gap: 6 }}>
+                        {onCreateVideo && (asset.type !== 'video' && !asset.dataUrl?.startsWith('data:video')) && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onCreateVideo() }}
+                                style={{
+                                    height: 28, padding: '0 8px', borderRadius: 7, border: 'none',
+                                    background: 'rgba(255,255,255,0.1)', color: 'white',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                    fontSize: 11, fontWeight: 500
+                                }}
+                                title="Use as reference for video"
+                            >
+                                Animate
+                            </button>
+                        )}
                         <button
                             onClick={(e) => { e.stopPropagation(); window.api?.invoke(IPC.ASSETS_SAVE_AS, { id: asset.id }) }}
                             style={{
@@ -249,13 +278,15 @@ function Lightbox({
     asset,
     onClose,
     onDelete,
-    onFavorite
+    onFavorite,
+    onCreateVideo
 }: {
     asset: AssetWithData,
     onClose: () => void,
     onDelete?: (id: string) => void,
-    onFavorite?: (id: string, favorite: boolean) => void
-}): JSX.Element {
+    onFavorite?: (id: string, favorite: boolean) => void,
+    onCreateVideo?: () => void
+}) {
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -296,13 +327,23 @@ function Lightbox({
                 }}
             >
                 {/* Image */}
-                <div style={{ flex: 1, minWidth: 0, borderRadius: 16, overflow: 'hidden', background: 'var(--bg-02)' }}>
+                <div style={{ flex: 1, minWidth: 0, borderRadius: 16, overflow: 'hidden', background: 'var(--bg-02)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {asset.dataUrl && (
-                        <img
-                            src={asset.dataUrl}
-                            alt=""
-                            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                        />
+                        asset.type === 'video' || asset.dataUrl.startsWith('data:video') ? (
+                            <video
+                                src={asset.dataUrl}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                controls
+                                autoPlay
+                                loop
+                            />
+                        ) : (
+                            <img
+                                src={asset.dataUrl}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                            />
+                        )
                     )}
                 </div>
 
@@ -354,6 +395,15 @@ function Lightbox({
                     </div>
 
                     <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {onCreateVideo && (asset.type !== 'video' && !asset.dataUrl?.startsWith('data:video')) && (
+                            <button
+                                className="btn btn-primary"
+                                onClick={onCreateVideo}
+                                style={{ justifyContent: 'center', marginBottom: 4 }}
+                            >
+                                ✨ Generate Video
+                            </button>
+                        )}
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button
                                 className="btn btn-secondary"

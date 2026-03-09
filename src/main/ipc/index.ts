@@ -8,10 +8,10 @@ import { ProjectsRepository } from '../db/repositories/projects.repo'
 import { JobsRepository } from '../db/repositories/jobs.repo'
 import { AssetsRepository } from '../db/repositories/assets.repo'
 import { CostsRepository } from '../db/repositories/costs.repo'
+import { libraryRepo } from '../db/repositories/library.repo'
 import { FileManager } from '../services/FileManager'
 import { QueueManager } from '../queue/QueueManager'
 import { logger } from '../utils/logger'
-import { nanoid } from 'nanoid'
 
 const vault = KeyVault.getInstance()
 const compiler = new PromptCompiler()
@@ -284,6 +284,60 @@ export function registerAllIpcHandlers(
         const values = [...Object.values(settings), 1]
         if (fields) db.prepare(`UPDATE app_settings SET ${fields} WHERE id = ?`).run(...values)
         return { ok: true }
+    })
+
+    // ─── Library ──────────────────────────────────────────────────────────────
+
+    ipcMain.handle(IPC.LIBRARY_LIST, (_e, { type }: { type?: string }) => {
+        return libraryRepo.list(type)
+    })
+
+    ipcMain.handle(IPC.LIBRARY_ADD, async (_e, { name, type, filePath, tags }: { name: string; type: string; filePath: string; tags?: string[] }) => {
+        const fs = require('fs')
+        if (!fs.existsSync(filePath)) throw new Error('Source file not found')
+
+        const buffer = fs.readFileSync(filePath)
+        // Extract original extension or default to png
+        const extMatch = filePath.match(/\.[^/.]+$/)
+        const ext = extMatch ? extMatch[0] : '.png'
+        const filename = `library_${Date.now()}${ext}`
+
+        fileManager.saveAsset(buffer, 'library', 'reference', filename)
+        // Library items live in the AIStudio/library folder. 
+        // We override the auto-generated relative path to point to the dedicated library directory.
+        const targetRelativePath = `library/${type === 'character' ? 'characters' : 'styles'}/${filename}`
+        fs.writeFileSync(fileManager.absolutePath(targetRelativePath), buffer)
+
+        return libraryRepo.add({
+            name,
+            type,
+            file_path: targetRelativePath,
+            tags: tags ? JSON.stringify(tags) : undefined
+        })
+    })
+
+    ipcMain.handle(IPC.LIBRARY_DELETE, (_e, { id }: { id: string }) => {
+        const item = libraryRepo.get(id)
+        if (item) {
+            try { fileManager.deleteAsset(item.file_path) } catch { }
+            libraryRepo.delete(id)
+        }
+        return { ok: true }
+    })
+
+    ipcMain.handle(IPC.LIBRARY_READ_FILE, (_e, { id }: { id: string }) => {
+        const item = libraryRepo.get(id)
+        if (!item) return { data: null }
+        try {
+            const buffer = fileManager.readAsset(item.file_path)
+
+            let mimeType = 'image/png'
+            if (item.file_path.endsWith('.jpg') || item.file_path.endsWith('.jpeg')) mimeType = 'image/jpeg'
+
+            return { data: buffer.toString('base64'), mimeType }
+        } catch {
+            return { data: null }
+        }
     })
 
     logger.info('All IPC handlers registered')

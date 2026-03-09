@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron'
-import { nanoid } from 'nanoid'
+
 import type { ProviderRegistry } from '../providers/registry'
 import { JobsRepository } from '../db/repositories/jobs.repo'
 import { AssetsRepository } from '../db/repositories/assets.repo'
@@ -7,7 +7,7 @@ import { CostsRepository } from '../db/repositories/costs.repo'
 import { ProjectsRepository } from '../db/repositories/projects.repo'
 import { KeyVault } from '../services/KeyVault'
 import { FileManager } from '../services/FileManager'
-import type { Job, Asset } from '../../shared/types'
+import type { Job } from '../../shared/types'
 import { IPC } from '../../shared/ipc-channels'
 import { logger } from '../utils/logger'
 
@@ -23,7 +23,7 @@ const RETRY_DELAYS = [5000, 30000, 120000]
 export class QueueManager {
     private static instance: QueueManager
     private queue: QueueEntry[] = []
-    private running: Map<string, boolean> = new Map() // provider -> busy slots
+
     private concurrencyPerProvider: Record<string, number> = {}
     private maxConcurrentPerProvider = 2
     private jobsRepo = new JobsRepository()
@@ -119,9 +119,28 @@ export class QueueManager {
             const promptData = JSON.parse(job.prompt_data)
             const parameters = job.parameters ? JSON.parse(job.parameters) : {}
 
+            const referenceImages: Buffer[] = []
+            if (promptData.libraryReferenceId) {
+                const { libraryRepo } = require('../db/repositories/library.repo')
+                const item = libraryRepo.get(promptData.libraryReferenceId)
+                if (item) {
+                    const buf = this.fileManager.readAsset(item.file_path)
+                    referenceImages.push(buf)
+                    libraryRepo.incrementUsage(item.id)
+                }
+            }
+            if (promptData.assetReferenceId) {
+                const asset = this.assetsRepo.get(promptData.assetReferenceId)
+                if (asset) {
+                    const buf = this.fileManager.readAsset(asset.file_path)
+                    referenceImages.push(buf)
+                }
+            }
+
             const result = await adapter.generate({
                 jobId: job.id,
                 prompt: job.raw_prompt ?? '',
+                referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
                 parameters: { ...parameters, aspectRatio: promptData.aspectRatio },
                 model: job.model,
                 count: parameters.count ?? 1
@@ -131,18 +150,19 @@ export class QueueManager {
             const assetIds: string[] = []
             for (let i = 0; i < result.outputs.length; i++) {
                 const output = result.outputs[i]
+                const assetType = output.mimeType.startsWith('video/') ? 'video' : 'image'
                 const filename = this.fileManager.generateFilename(output.mimeType, i)
                 const { relativePath, fileSize } = this.fileManager.saveAsset(
                     output.buffer,
                     job.project_id,
-                    'image',
+                    assetType,
                     filename
                 )
 
                 const asset = this.assetsRepo.create({
                     project_id: job.project_id,
                     job_id: job.id,
-                    type: 'image',
+                    type: assetType,
                     file_path: relativePath,
                     file_name: filename,
                     file_size: fileSize,

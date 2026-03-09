@@ -5,7 +5,8 @@ import { LayoutDashboard, Wand2, Library, BarChart2, Clock, Settings, Film } fro
 const NAV_ITEMS = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Wand2, label: 'Generate', path: '/generate' },
-    { icon: Film, label: 'Library', path: '/library' },
+    { icon: Film, label: 'Video Studio', path: '/video' },
+    { icon: Library, label: 'Library', path: '/library' },
     { icon: BarChart2, label: 'Costs', path: '/costs' },
     { icon: Clock, label: 'Queue', path: '/queue' },
     { icon: Settings, label: 'Settings', path: '/settings' },

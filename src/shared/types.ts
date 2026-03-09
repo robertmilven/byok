@@ -134,6 +134,8 @@ export interface PromptData {
     aspectRatio: string
     negativePrompt?: string
     additionalDetails?: string
+    libraryReferenceId?: string
+    assetReferenceId?: string
 }
 
 // Cost summary for dashboard

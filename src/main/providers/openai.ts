@@ -71,7 +71,7 @@ export class OpenAIAdapter implements ProviderAdapter {
             {
                 id: 'dall-e-2',
                 name: 'DALL·E 2',
-                capabilities: ['text-to-image', 'variation'],
+                capabilities: ['text-to-image', 'image-to-image', 'variation'],
                 maxResolution: { w: 1024, h: 1024 },
                 aspectRatios: ['1:1'],
                 pricing: [{ costPerUnit: 0.02, unit: 'image' }],
@@ -104,7 +104,7 @@ export class OpenAIAdapter implements ProviderAdapter {
         if (!this.client) throw new Error('OpenAI client not initialized')
 
         const count = request.count ?? 1
-        const outputs = []
+        const outputs: Array<{ buffer: Buffer; mimeType: string; width: number; height: number; seed?: number }> = []
 
         if (request.model === 'dall-e-3') {
             // DALL-E 3 only supports 1 image per request; loop for multiple
@@ -141,13 +141,27 @@ export class OpenAIAdapter implements ProviderAdapter {
             }
         } else if (request.model === 'dall-e-2') {
             const size = (request.parameters?.size as string) ?? '1024x1024' as '256x256' | '512x512' | '1024x1024'
-            const response = await this.client.images.generate({
-                model: 'dall-e-2',
-                prompt: request.prompt,
-                n: Math.min(count, 10),
-                size: size as '256x256' | '512x512' | '1024x1024',
-                response_format: 'b64_json'
-            })
+            let response;
+
+            if (request.referenceImages && request.referenceImages.length > 0) {
+                const { toFile } = await import('openai');
+                const imageFile = await toFile(request.referenceImages[0], 'reference.png');
+                response = await this.client.images.createVariation({
+                    model: 'dall-e-2',
+                    image: imageFile as any,
+                    n: Math.min(count, 10),
+                    size: size as '256x256' | '512x512' | '1024x1024',
+                    response_format: 'b64_json'
+                })
+            } else {
+                response = await this.client.images.generate({
+                    model: 'dall-e-2',
+                    prompt: request.prompt,
+                    n: Math.min(count, 10),
+                    size: size as '256x256' | '512x512' | '1024x1024',
+                    response_format: 'b64_json'
+                })
+            }
 
             for (const data of response.data) {
                 if (!data.b64_json) continue

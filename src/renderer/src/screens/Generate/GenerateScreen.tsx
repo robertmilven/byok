@@ -6,8 +6,10 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useQueueStore } from '../../stores/queueStore'
 import { IPC } from '../../../../shared/ipc-channels'
 import type { Asset, PromptData } from '../../../../shared/types'
+import { useNavigate } from 'react-router-dom'
 
-export function GenerateScreen(): JSX.Element {
+export function GenerateScreen() {
+    const navigate = useNavigate()
     const { activeProject, projects, createProject } = useProjectStore()
     const { running } = useQueueStore()
     const [assets, setAssets] = useState<Asset[]>([])
@@ -19,8 +21,7 @@ export function GenerateScreen(): JSX.Element {
         if (!projectId) return
         try {
             const list = await window.api.invoke<Asset[]>(IPC.ASSETS_LIST, {
-                projectId,
-                type: 'image'
+                projectId
             })
             setAssets(list)
         } catch { }
@@ -121,7 +122,10 @@ export function GenerateScreen(): JSX.Element {
                     )}
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <PromptBuilder onGenerate={handleGenerate} loading={generating || running > 0} />
+                    <PromptBuilder
+                        onGenerate={handleGenerate}
+                        loading={generating || running > 0}
+                    />
                 </div>
             </div>
 
@@ -152,6 +156,11 @@ export function GenerateScreen(): JSX.Element {
                         assets={assets}
                         onDelete={handleDelete}
                         onFavorite={handleFavorite}
+                        onCreateVideo={(asset) => {
+                            if (asset.dataUrl) {
+                                navigate('/video', { state: { referenceAsset: { id: asset.id, dataUrl: asset.dataUrl } } })
+                            }
+                        }}
                     />
                 </div>
             </div>

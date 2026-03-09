@@ -58,6 +58,7 @@ export const IPC = {
     LIBRARY_LIST: 'library:list',
     LIBRARY_ADD: 'library:add',
     LIBRARY_DELETE: 'library:delete',
+    LIBRARY_READ_FILE: 'library:readFile',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -113,4 +114,5 @@ export interface IpcPayloads {
     [IPC.LIBRARY_LIST]: { type?: string }
     [IPC.LIBRARY_ADD]: { name: string; type: string; filePath: string; tags?: string[] }
     [IPC.LIBRARY_DELETE]: { id: string }
+    [IPC.LIBRARY_READ_FILE]: { id: string }
 }

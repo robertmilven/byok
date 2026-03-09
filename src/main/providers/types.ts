@@ -5,10 +5,9 @@ export interface ProviderCapability {
     type:
     | 'text-to-image'
     | 'image-to-image'
-    | 'inpaint'
-    | 'variation'
+    | 'text-to-video'
     | 'image-to-video'
-    | 'video-interpolation'
+    | 'inpaint'
     | 'lip-sync'
     models: ModelInfo[]
 }

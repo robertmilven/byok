@@ -1,6 +1,6 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
-import { Sparkles, ChevronDown } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import type { PromptData, ProviderInfo } from '../../../../shared/types'
 import {
     SHOT_TYPES,
@@ -21,11 +21,13 @@ interface Props {
         count: number
     }) => void
     loading?: boolean
+    referenceAsset?: { id: string; dataUrl: string } | null
+    onClearReference?: () => void
 }
 
 const COUNT_OPTIONS = [1, 2, 4]
 
-export function PromptBuilder({ onGenerate, loading }: Props): JSX.Element {
+export function PromptBuilder({ onGenerate, loading, referenceAsset, onClearReference }: Props) {
     const [promptData, setPromptData] = useState<PromptData>({
         subject: '',
         aspectRatio: '1:1',
@@ -35,11 +37,12 @@ export function PromptBuilder({ onGenerate, loading }: Props): JSX.Element {
     const [selectedModel, setSelectedModel] = useState('dall-e-3')
     const [count, setCount] = useState(1)
     const [estimate, setEstimate] = useState(0)
+    const [characters, setCharacters] = useState<any[]>([])
 
     useEffect(() => {
         const fetchProviders = async () => {
             try {
-                const list = await window.api.invoke<ProviderInfo[]>(IPC.PROVIDERS_LIST)
+                const list = await (window as any).api.invoke(IPC.PROVIDERS_LIST)
                 setProviders(list)
                 if (list.length > 0) {
                     setSelectedProvider(list[0].slug)
@@ -48,12 +51,20 @@ export function PromptBuilder({ onGenerate, loading }: Props): JSX.Element {
             } catch { }
         }
         fetchProviders()
+
+        const fetchCharacters = async () => {
+            try {
+                const list = await (window as any).api.invoke(IPC.LIBRARY_LIST, { type: 'character' })
+                setCharacters(list)
+            } catch { }
+        }
+        fetchCharacters()
     }, [])
 
     useEffect(() => {
         const fetchEstimate = async () => {
             try {
-                const result = await window.api.invoke<{ estimate: number }>(IPC.GENERATION_ESTIMATE, {
+                const result = await (window as any).api.invoke(IPC.GENERATION_ESTIMATE, {
                     provider: selectedProvider,
                     model: selectedModel,
                     count,
@@ -67,6 +78,14 @@ export function PromptBuilder({ onGenerate, loading }: Props): JSX.Element {
         fetchEstimate()
     }, [selectedProvider, selectedModel, count, promptData.aspectRatio])
 
+    useEffect(() => {
+        if (referenceAsset) {
+            setPromptData(p => ({ ...p, assetReferenceId: referenceAsset.id }))
+        } else {
+            setPromptData(p => ({ ...p, assetReferenceId: undefined }))
+        }
+    }, [referenceAsset])
+
     const update = (field: keyof PromptData, value: string) => {
         setPromptData((p) => ({ ...p, [field]: value || undefined }))
     }
@@ -75,7 +94,7 @@ export function PromptBuilder({ onGenerate, loading }: Props): JSX.Element {
     const models = currentProvider?.models ?? []
 
     const handleGenerate = () => {
-        if (!promptData.subject.trim()) return
+        if (!promptData.subject?.trim()) return
         onGenerate({ promptData, provider: selectedProvider, model: selectedModel, count })
     }
 
@@ -175,17 +194,48 @@ export function PromptBuilder({ onGenerate, loading }: Props): JSX.Element {
                 </div>
             </div>
 
-            {/* Negative Prompt */}
-            <div className="form-field">
-                <label className="label">Negative Prompt</label>
-                <textarea
-                    className="textarea"
-                    rows={2}
-                    placeholder="blurry, low quality, watermark..."
-                    value={promptData.negativePrompt ?? ''}
-                    onChange={(e) => update('negativePrompt', e.target.value)}
-                    style={{ userSelect: 'text' }}
-                />
+            {/* Negative Prompt & Reference Character */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-field">
+                    <label className="label">Negative Prompt</label>
+                    <textarea
+                        className="textarea"
+                        rows={2}
+                        placeholder="blurry, low quality, watermark..."
+                        value={promptData.negativePrompt ?? ''}
+                        onChange={(e) => update('negativePrompt', e.target.value)}
+                        style={{ userSelect: 'text' }}
+                    />
+                </div>
+                <div className="form-field">
+                    <label className="label">Reference Media</label>
+                    {referenceAsset ? (
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                            <div style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                <img src={referenceAsset.dataUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Using generated image as reference.</p>
+                                <button onClick={onClearReference} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 11 }}>Clear Reference</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <select
+                                className="select"
+                                style={{ flex: 1 }}
+                                value={promptData.libraryReferenceId ?? ''}
+                                onChange={(e) => update('libraryReferenceId', e.target.value)}
+                            >
+                                <option value="">-- None --</option>
+                                {characters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+                                Select a character or use an image from the Gallery for video generation.
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="divider" />
@@ -266,12 +316,12 @@ export function PromptBuilder({ onGenerate, loading }: Props): JSX.Element {
                     <button
                         className="btn btn-primary btn-lg"
                         onClick={handleGenerate}
-                        disabled={loading || !promptData.subject.trim()}
+                        disabled={loading || !promptData.subject?.trim()}
                         style={{
                             flex: 1,
                             justifyContent: 'center',
-                            opacity: loading || !promptData.subject.trim() ? 0.5 : 1,
-                            cursor: loading || !promptData.subject.trim() ? 'not-allowed' : 'pointer',
+                            opacity: loading || !promptData.subject?.trim() ? 0.5 : 1,
+                            cursor: loading || !promptData.subject?.trim() ? 'not-allowed' : 'pointer',
                         }}
                     >
                         {loading ? (
