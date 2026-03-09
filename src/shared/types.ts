@@ -50,8 +50,8 @@ export interface Asset {
     thumbnail?: string
     metadata?: string // JSON
     favorite: number // 0 | 1
-    created_at: number
     tags?: string // JSON array
+    dataUrl?: string
 }
 
 export interface Preset {
@@ -145,6 +145,23 @@ export interface CostSummary {
     byModel: Record<string, number>
     byProject: Record<string, number>
     entries: CostEntry[]
+}
+
+// Storyboard / Story Compilation
+export interface Story {
+    id: string
+    project_id: string
+    name: string
+    clips: Clip[]
+    created_at: number
+}
+
+export interface Clip {
+    id: string
+    asset_id: string
+    type: 'image' | 'video'
+    duration_ms: number // For images, how long to show. For videos, the clip length.
+    order: number
 }
 
 // Queue event pushed from main to renderer

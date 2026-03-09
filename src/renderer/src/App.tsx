@@ -10,6 +10,7 @@ import { QueueScreen } from './screens/Queue/QueueScreen'
 import { CostsScreen } from './screens/Costs/CostsScreen'
 import { SettingsScreen } from './screens/Settings/SettingsScreen'
 import { LibraryScreen } from './screens/Library/LibraryScreen'
+import { StoryScreen } from './screens/Story/StoryScreen'
 import { useQueueStore } from './stores/queueStore'
 import { useEffect } from 'react'
 
@@ -38,6 +39,7 @@ function App() {
                     <Route path="/costs" element={<CostsScreen />} />
                     <Route path="/settings" element={<SettingsScreen />} />
                     <Route path="/library" element={<LibraryScreen />} />
+                    <Route path="/story" element={<StoryScreen />} />
                 </Routes>
             </main>
             <StatusBar />

@@ -9,6 +9,8 @@ import { JobsRepository } from '../db/repositories/jobs.repo'
 import { AssetsRepository } from '../db/repositories/assets.repo'
 import { CostsRepository } from '../db/repositories/costs.repo'
 import { libraryRepo } from '../db/repositories/library.repo'
+import { StoriesRepository } from '../db/repositories/stories.repo'
+import { StoryCompiler } from '../services/StoryCompiler'
 import { FileManager } from '../services/FileManager'
 import { QueueManager } from '../queue/QueueManager'
 import { logger } from '../utils/logger'
@@ -19,6 +21,8 @@ const projectsRepo = new ProjectsRepository()
 const jobsRepo = new JobsRepository()
 const assetsRepo = new AssetsRepository()
 const costsRepo = new CostsRepository()
+const storiesRepo = new StoriesRepository()
+const storyCompiler = new StoryCompiler()
 const fileManager = FileManager.getInstance()
 
 export function registerAllIpcHandlers(
@@ -337,6 +341,43 @@ export function registerAllIpcHandlers(
             return { data: buffer.toString('base64'), mimeType }
         } catch {
             return { data: null }
+        }
+    })
+
+    // ─── Stories ──────────────────────────────────────────────────────────────
+
+    ipcMain.handle(IPC.STORIES_LIST, (_e, { projectId }: { projectId: string }) => {
+        return storiesRepo.list(projectId)
+    })
+
+    ipcMain.handle(IPC.STORIES_GET, (_e, { id }: { id: string }) => {
+        return storiesRepo.get(id)
+    })
+
+    ipcMain.handle(IPC.STORIES_UPSERT, (_e, story: import('../../shared/types').Story) => {
+        return storiesRepo.upsert(story)
+    })
+
+    ipcMain.handle(IPC.STORIES_DELETE, (_e, { id }: { id: string }) => {
+        storiesRepo.delete(id)
+        return { ok: true }
+    })
+
+    ipcMain.handle(IPC.STORIES_EXPORT, async (_e, { id, format: _format }: { id: string; format?: 'mp4' }) => {
+        const story = storiesRepo.get(id)
+        if (!story) return { ok: false, error: 'Story not found' }
+
+        logger.info(`Starting export for story ${story.name} (${id})`)
+        const result = await storyCompiler.compile(story)
+
+        if (result.success) {
+            // Create asset record for the compiled story
+            const path = require('path')
+            const filename = path.basename(result.outputPath!)
+
+            return { ok: true, status: 'completed', message: `Exported to ${filename}`, path: result.outputPath }
+        } else {
+            return { ok: false, error: result.error }
         }
     })
 

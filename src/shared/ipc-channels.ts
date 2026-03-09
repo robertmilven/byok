@@ -59,6 +59,13 @@ export const IPC = {
     LIBRARY_ADD: 'library:add',
     LIBRARY_DELETE: 'library:delete',
     LIBRARY_READ_FILE: 'library:readFile',
+
+    // Stories
+    STORIES_LIST: 'stories:list',
+    STORIES_GET: 'stories:get',
+    STORIES_UPSERT: 'stories:upsert',
+    STORIES_DELETE: 'stories:delete',
+    STORIES_EXPORT: 'stories:export',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -115,4 +122,9 @@ export interface IpcPayloads {
     [IPC.LIBRARY_ADD]: { name: string; type: string; filePath: string; tags?: string[] }
     [IPC.LIBRARY_DELETE]: { id: string }
     [IPC.LIBRARY_READ_FILE]: { id: string }
+    [IPC.STORIES_LIST]: { projectId: string }
+    [IPC.STORIES_GET]: { id: string }
+    [IPC.STORIES_UPSERT]: import('./types').Story
+    [IPC.STORIES_DELETE]: { id: string }
+    [IPC.STORIES_EXPORT]: { id: string; format?: 'mp4' }
 }

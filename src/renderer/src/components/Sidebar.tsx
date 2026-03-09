@@ -1,11 +1,12 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Wand2, Library, BarChart2, Clock, Settings, Film } from 'lucide-react'
+import { LayoutDashboard, Wand2, Library, BarChart2, Clock, Settings, Film, Clapperboard } from 'lucide-react'
 
 const NAV_ITEMS = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Wand2, label: 'Generate', path: '/generate' },
     { icon: Film, label: 'Video Studio', path: '/video' },
+    { icon: Clapperboard, label: 'Storyboard', path: '/story' },
     { icon: Library, label: 'Library', path: '/library' },
     { icon: BarChart2, label: 'Costs', path: '/costs' },
     { icon: Clock, label: 'Queue', path: '/queue' },

@@ -3,9 +3,9 @@ import { logger } from '../utils/logger'
 
 // Embedding SQL migrations directly to avoid build-time file copying issues
 const MIGRATIONS: Array<{ filename: string; sql: string }> = [
-    {
-        filename: '001_initial.sql',
-        sql: `
+  {
+    filename: '001_initial.sql',
+    sql: `
 -- Projects table
 CREATE TABLE IF NOT EXISTS projects (
   id            TEXT PRIMARY KEY,
@@ -138,14 +138,30 @@ CREATE INDEX IF NOT EXISTS idx_costs_date ON cost_entries(created_at);
 CREATE INDEX IF NOT EXISTS idx_presets_category ON presets(category);
 CREATE INDEX IF NOT EXISTS idx_library_type ON library_items(type);
     `
-    }
+  },
+  {
+    filename: '002_stories.sql',
+    sql: `
+-- Stories table for storyboard feature
+CREATE TABLE IF NOT EXISTS stories (
+  id            TEXT PRIMARY KEY,
+  project_id    TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  clips_json    TEXT NOT NULL, -- JSON array of clips
+  created_at    INTEGER NOT NULL,
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_stories_project ON stories(project_id);
+`
+  }
 ]
 
 export function runMigrations(): void {
-    const db = getDb()
+  const db = getDb()
 
-    // Create migrations tracking table
-    db.exec(`
+  // Create migrations tracking table
+  db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       filename TEXT NOT NULL UNIQUE,
@@ -153,33 +169,33 @@ export function runMigrations(): void {
     )
   `)
 
-    // Get applied migrations
-    const applied = db
-        .prepare('SELECT filename FROM _migrations')
-        .all()
-        .map((row: { filename: string }) => row.filename)
+  // Get applied migrations
+  const applied = db
+    .prepare('SELECT filename FROM _migrations')
+    .all()
+    .map((row: { filename: string }) => row.filename)
 
-    let ran = 0
-    for (const migration of MIGRATIONS) {
-        if (applied.includes(migration.filename)) continue
+  let ran = 0
+  for (const migration of MIGRATIONS) {
+    if (applied.includes(migration.filename)) continue
 
-        logger.info(`Running migration: ${migration.filename}`)
+    logger.info(`Running migration: ${migration.filename}`)
 
-        db.transaction(() => {
-            db.exec(migration.sql)
-            db.prepare('INSERT INTO _migrations (filename, applied_at) VALUES (?, ?)').run(
-                migration.filename,
-                Date.now()
-            )
-        })()
+    db.transaction(() => {
+      db.exec(migration.sql)
+      db.prepare('INSERT INTO _migrations (filename, applied_at) VALUES (?, ?)').run(
+        migration.filename,
+        Date.now()
+      )
+    })()
 
-        ran++
-        logger.info(`Migration applied: ${migration.filename}`)
-    }
+    ran++
+    logger.info(`Migration applied: ${migration.filename}`)
+  }
 
-    if (ran > 0) {
-        logger.info(`Applied ${ran} migration(s)`)
-    } else {
-        logger.info('Database schema up to date')
-    }
+  if (ran > 0) {
+    logger.info(`Applied ${ran} migration(s)`)
+  } else {
+    logger.info('Database schema up to date')
+  }
 }
